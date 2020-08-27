@@ -153,7 +153,7 @@ int main(int argc, const char * argv[]) {
 		char const *jobLabel = argv[1];
 		const char *statePath = argv[2];
 		NSURL *shipItStateURL = [NSURL fileURLWithPath:@(statePath)];
-		installRequest([SQRLShipItRequest readUsingURL:[RACSignal return:shipItStateURL]], @(jobLabel));
+		installRequest([SQRLShipItRequest readUsingURL:shipItStateURL], @(jobLabel));
 
 		dispatch_main();
 	}

@@ -519,33 +519,27 @@ static NSString * const SQRLUpdaterUniqueTemporaryDirectoryPrefix = @"update.";
 #pragma mark File Management
 
 - (RACSignal *)uniqueTemporaryDirectoryForUpdate {
-	return [[[RACSignal
-		defer:^{
-			SQRLDirectoryManager *directoryManager = [[SQRLDirectoryManager alloc] initWithApplicationIdentifier:SQRLShipItLauncher.shipItJobLabel];
-			return [directoryManager storageURL];
-		}]
-		flattenMap:^(NSURL *storageURL) {
-			NSURL *updateDirectoryTemplate = [storageURL URLByAppendingPathComponent:[SQRLUpdaterUniqueTemporaryDirectoryPrefix stringByAppendingString:@"XXXXXXX"]];
-			char *updateDirectoryCString = strdup(updateDirectoryTemplate.path.fileSystemRepresentation);
-			@onExit {
-				free(updateDirectoryCString);
-			};
-			
-			if (mkdtemp(updateDirectoryCString) == NULL) {
-				int code = errno;
+	SQRLDirectoryManager *directoryManager = [[SQRLDirectoryManager alloc] initWithApplicationIdentifier:SQRLShipItLauncher.shipItJobLabel];
+	
+	NSURL *updateDirectoryTemplate = [[directoryManager storageURL] URLByAppendingPathComponent:[SQRLUpdaterUniqueTemporaryDirectoryPrefix stringByAppendingString:@"XXXXXXX"]];
+	char *updateDirectoryCString = strdup(updateDirectoryTemplate.path.fileSystemRepresentation);
+	@onExit {
+		free(updateDirectoryCString);
+	};
+	
+	if (mkdtemp(updateDirectoryCString) == NULL) {
+		int code = errno;
 
-				NSDictionary *userInfo = @{
-					NSLocalizedDescriptionKey: NSLocalizedString(@"Could not create temporary directory", nil),
-					NSURLErrorKey: updateDirectoryTemplate
-				};
+		NSDictionary *userInfo = @{
+			NSLocalizedDescriptionKey: NSLocalizedString(@"Could not create temporary directory", nil),
+			NSURLErrorKey: updateDirectoryTemplate
+		};
 
-				return [RACSignal error:[NSError errorWithDomain:NSPOSIXErrorDomain code:code userInfo:userInfo]];
-			}
+		return [[RACSignal error:[NSError errorWithDomain:NSPOSIXErrorDomain code:code userInfo:userInfo]] setNameWithFormat:@"%@ -uniqueTemporaryDirectoryForUpdate", self];
+	}
 
-			NSString *updateDirectoryPath = [NSFileManager.defaultManager stringWithFileSystemRepresentation:updateDirectoryCString length:strlen(updateDirectoryCString)];
-			return [RACSignal return:[NSURL fileURLWithPath:updateDirectoryPath isDirectory:YES]];
-		}]
-		setNameWithFormat:@"%@ -uniqueTemporaryDirectoryForUpdate", self];
+	NSString *updateDirectoryPath = [NSFileManager.defaultManager stringWithFileSystemRepresentation:updateDirectoryCString length:strlen(updateDirectoryCString)];
+	return [[RACSignal return:[NSURL fileURLWithPath:updateDirectoryPath isDirectory:YES]] setNameWithFormat:@"%@ -uniqueTemporaryDirectoryForUpdate", self];
 }
 
 - (RACSignal *)updateBundleMatchingCurrentApplicationInDirectory:(NSURL *)directory {
@@ -594,13 +588,9 @@ static NSString * const SQRLUpdaterUniqueTemporaryDirectoryPrefix = @"update.";
 		setNameWithFormat:@"%@ -applicationBundleMatchingCurrentApplicationInDirectory: %@", self, directory];
 }
 
-- (RACSignal *)shipItStateURL {
-	return [[RACSignal
-		defer:^{
-			SQRLDirectoryManager *directoryManager = [[SQRLDirectoryManager alloc] initWithApplicationIdentifier:SQRLShipItLauncher.shipItJobLabel];
-			return directoryManager.shipItStateURL;
-		}]
-		setNameWithFormat:@"%@ -shipItStateURL", self];
+- (NSURL *)shipItStateURL {
+	SQRLDirectoryManager *directoryManager = [[SQRLDirectoryManager alloc] initWithApplicationIdentifier:SQRLShipItLauncher.shipItJobLabel];
+	return directoryManager.shipItStateURL;
 }
 
 /// Is the host app running on a read-only volume?
@@ -634,34 +624,29 @@ static NSString * const SQRLUpdaterUniqueTemporaryDirectoryPrefix = @"update.";
 /// Sends each removed directory then completes, or errors, on an unspecified
 /// thread.
 - (RACSignal *)pruneUpdateDirectories {
-	return [[[RACSignal
-		defer:^{
-			// If we already have updates downloaded we don't wanna prune them.
-			if (self.state == SQRLUpdaterStateAwaitingRelaunch) return [RACSignal empty];
+	// If we already have updates downloaded we don't wanna prune them.
+	if (self.state == SQRLUpdaterStateAwaitingRelaunch) return [RACSignal empty];
 
-			SQRLDirectoryManager *directoryManager = [[SQRLDirectoryManager alloc] initWithApplicationIdentifier:SQRLShipItLauncher.shipItJobLabel];
-			return [directoryManager storageURL];
-		}]
-		flattenMap:^(NSURL *storageURL) {
-			NSFileManager *manager = [[NSFileManager alloc] init];
-			NSDirectoryEnumerator *enumerator = [manager enumeratorAtURL:storageURL includingPropertiesForKeys:nil options:NSDirectoryEnumerationSkipsSubdirectoryDescendants errorHandler:^(NSURL *URL, NSError *error) {
-				NSLog(@"Error enumerating item %@ within directory %@: %@", URL, storageURL, error);
-				return YES;
-			}];
+	SQRLDirectoryManager *directoryManager = [[SQRLDirectoryManager alloc] initWithApplicationIdentifier:SQRLShipItLauncher.shipItJobLabel];
+	NSURL *storageURL = [directoryManager storageURL];
+	
+	NSFileManager *manager = [[NSFileManager alloc] init];
+	NSDirectoryEnumerator *enumerator = [manager enumeratorAtURL:storageURL includingPropertiesForKeys:nil options:NSDirectoryEnumerationSkipsSubdirectoryDescendants errorHandler:^(NSURL *URL, NSError *error) {
+		NSLog(@"Error enumerating item %@ within directory %@: %@", URL, storageURL, error);
+		return YES;
+	}];
 
-			return [[enumerator.rac_sequence.signal
-				filter:^(NSURL *enumeratedURL) {
-					NSString *name = enumeratedURL.lastPathComponent;
-					return [name hasPrefix:SQRLUpdaterUniqueTemporaryDirectoryPrefix];
-				}]
-				doNext:^(NSURL *directoryURL) {
-					NSError *error = nil;
-					if (![manager removeItemAtURL:directoryURL error:&error]) {
-						NSLog(@"Error removing old update directory at %@: %@", directoryURL, error.sqrl_verboseDescription);
-					}
-				}];
+	return [[[enumerator.rac_sequence.signal
+		filter:^(NSURL *enumeratedURL) {
+			NSString *name = enumeratedURL.lastPathComponent;
+			return [name hasPrefix:SQRLUpdaterUniqueTemporaryDirectoryPrefix];
 		}]
-		setNameWithFormat:@"%@ -prunedUpdateDirectories", self];
+		doNext:^(NSURL *directoryURL) {
+			NSError *error = nil;
+			if (![manager removeItemAtURL:directoryURL error:&error]) {
+				NSLog(@"Error removing old update directory at %@: %@", directoryURL, error.sqrl_verboseDescription);
+			}
+		}] setNameWithFormat:@"%@ -prunedUpdateDirectories", self];
 }
 
 

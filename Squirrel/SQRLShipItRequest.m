@@ -71,34 +71,16 @@ NSString * const SQRLShipItRequestPropertyErrorKey = @"SQRLShipItRequestProperty
 	return [NSValueTransformer valueTransformerForName:MTLURLValueTransformerName];
 }
 
-+ (RACSignal *)readUsingURL:(RACSignal *)URL {
++ (RACSignal *)readUsingURL:(NSURL *)URL {
 	NSParameterAssert(URL != nil);
+	
+	NSError *error;
+	NSData *data = [self readFromURL:URL error:&error];
+	if (data == nil) {
+		return [RACSignal error:error];
+	}
 
-	return [[[[URL
-		flattenMap:^(NSURL *stateURL) {
-			NSError *error;
-			NSData *data = [self readFromURL:stateURL error:&error];
-			if (data == nil) {
-				return [RACSignal error:error];
-			}
-
-			return [RACSignal return:data];
-		}]
-		flattenMap:^(NSData *data) {
-			return [self readFromData:data];
-		}]
-		catch:^(NSError *error) {
-			NSDictionary *userInfo = @{
-				NSLocalizedDescriptionKey: NSLocalizedString(@"Could not read update request", nil),
-			};
-			if (error != nil) {
-				userInfo = [userInfo mtl_dictionaryByAddingEntriesFromDictionary:@{
-					NSUnderlyingErrorKey: error,
-				}];
-			}
-			return [RACSignal error:[NSError errorWithDomain:SQRLShipItRequestErrorDomain code:SQRLShipItRequestErrorUnarchiving userInfo:userInfo]];
-		}]
-		setNameWithFormat:@"+readUsingURL: %@", URL];
+	return [[RACSignal return:[self readFromData:data]] setNameWithFormat:@"+readUsingURL: %@", URL];
 }
 
 + (NSData *)readFromURL:(NSURL *)URL error:(NSError **)errorRef {
@@ -132,7 +114,7 @@ NSString * const SQRLShipItRequestPropertyErrorKey = @"SQRLShipItRequestProperty
 		setNameWithFormat:@"+readFromData: <NSData %p>", data];
 }
 
-- (RACSignal *)writeUsingURL:(RACSignal *)URL {
+- (RACSignal *)writeUsingURL:(NSURL *)URL {
 	NSParameterAssert(URL != nil);
 
 	return [[[[RACSignal

@@ -42,24 +42,20 @@ extern NSString * const SQRLShipItRequestPropertyErrorKey;
 // single update request from the client's perspective.
 @interface SQRLShipItRequest : MTLModel
 
-// Reads a `SQRLShipItState` from disk, at the location specified by the given
-// URL signal.
+// Reads a `SQRLShipItState` from disk, at the location specified by the given URL.
 //
-// URLSignal - Determines the file location to read from, the signal should send
-//             an `NSURL` object then complete, or error. This must not be nil.
+// URL - Determines the file location to read from. This must not be nil.
 //
 // Returns a signal which will synchronously send a `SQRLShipItRequest` then
 // complete, or error.
-+ (RACSignal *)readUsingURL:(RACSignal *)URLSignal;
++ (RACSignal *)readUsingURL:(NSURL *)URL;
 
-// Writes the receiver to disk, at the location specified by the given URL
-// signal.
+// Writes the receiver to disk, at the location specified by the given URL.
 //
-// URLSignal - Determines the file location to write to. The signal should send
-//             an `NSURL` object then complete, or error. This must not be nil.
+// URL - Determines the file location to write to. This must not be nil.
 //
 // Returns a signal which will synchronously complete or error.
-- (RACSignal *)writeUsingURL:(RACSignal *)URLSignal;
+- (RACSignal *)writeUsingURL:(NSURL *)URL;
 
 // Designated initialiser.
 //

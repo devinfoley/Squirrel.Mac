@@ -47,50 +47,27 @@
 
 #pragma mark Folder URLs
 
-- (RACSignal *)storageURL {
-	return [[RACSignal
-		defer:^{
-			NSError *error = nil;
-			NSURL *folderURL = [NSFileManager.defaultManager URLForDirectory:NSCachesDirectory inDomain:NSUserDomainMask appropriateForURL:nil create:YES error:&error];
-			if (folderURL == nil) {
-				return [RACSignal error:error];
-			}
+- (NSURL *)storageURL {
+	NSError *error = nil;
+	NSURL *folderURL = [NSFileManager.defaultManager URLForDirectory:NSCachesDirectory inDomain:NSUserDomainMask appropriateForURL:nil create:YES error:&error];
+	NSAssert(folderURL != nil, @"Could not get caches directory URL for updater tmp directory: %@", error);
 
-			folderURL = [folderURL URLByAppendingPathComponent:self.applicationIdentifier];
-			if (![NSFileManager.defaultManager createDirectoryAtURL:folderURL withIntermediateDirectories:YES attributes:nil error:&error]) {
-				return [RACSignal error:error];
-			}
-
-			return [RACSignal return:folderURL];
-		}]
-		setNameWithFormat:@"%@ -storageURL", self];
+	folderURL = [folderURL URLByAppendingPathComponent:self.applicationIdentifier];
+	NSAssert([NSFileManager.defaultManager createDirectoryAtURL:folderURL withIntermediateDirectories:YES attributes:nil error:&error], @"Could not create updater tmp directory: %@", error);
+	
+	return folderURL;
 }
 
-- (RACSignal *)shipItStateURL {
-	return [[[self
-		storageURL]
-		map:^(NSURL *folderURL) {
-			return [folderURL URLByAppendingPathComponent:@"ShipItState.plist"];
-		}]
-		setNameWithFormat:@"%@ -shipItStateURL", self];
+- (NSURL *)shipItStateURL {
+	return [[self storageURL] URLByAppendingPathComponent:@"ShipItState.plist"];
 }
 
-- (RACSignal *)shipItStdoutURL {
-	return [[[self
-		storageURL]
-		map:^(NSURL *folderURL) {
-			return [folderURL URLByAppendingPathComponent:@"ShipIt_stdout.log"];
-		}]
-		setNameWithFormat:@"%@ -shipItStdoutURL", self];
+- (NSURL *)shipItStdoutURL {
+	return [[self storageURL] URLByAppendingPathComponent:@"ShipIt_stdout.log"];
 }
 
-- (RACSignal *)shipItStderrURL {
-	return [[[self
-		storageURL]
-		map:^(NSURL *folderURL) {
-			return [folderURL URLByAppendingPathComponent:@"ShipIt_stderr.log"];
-		}]
-		setNameWithFormat:@"%@ -shipItStderrURL", self];
+- (NSURL *)shipItStderrURL {
+	return [[self storageURL] URLByAppendingPathComponent:@"ShipIt_stderr.log"];
 }
 
 #pragma mark NSObject

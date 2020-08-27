@@ -29,24 +29,16 @@
 //                 on-disk locations for. This must not be nil.
 - (instancetype)initWithApplicationIdentifier:(NSString *)appIdentifier;
 
-// Finds or creates a storage folder.
-//
-// Returns a signal which synchronously sends a URL then completes, or errors.
-- (RACSignal *)storageURL;
+// Finds or creates a storage folder and returns its URL.
+- (NSURL *)storageURL;
 
-// Determines where archived `SQRLShipItState` should be saved.
-//
-// Returns a signal which synchronously sends a URL then completes, or errors.
-- (RACSignal *)shipItStateURL;
+// Determines where archived `SQRLShipItState` should be saved and returns its URL.
+- (NSURL *)shipItStateURL;
 
-// Determines where ShipIt's stdout log should be saved.
-//
-// Returns a signal which synchronously sends a URL then completes, or errors.
-- (RACSignal *)shipItStdoutURL;
+// Determines where ShipIt's stdout log should be saved and returns its URL.
+- (NSURL *)shipItStdoutURL;
 
-// Determines where ShipIt's stderr log should be saved.
-//
-// Returns a signal which synchronously sends a URL then completes, or errors.
-- (RACSignal *)shipItStderrURL;
+// Determines where ShipIt's stderr log should be saved and returns its URL.
+- (NSURL *)shipItStderrURL;
 
 @end
